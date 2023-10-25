@@ -94,9 +94,8 @@
     body {
         margin: 0;
         font-family: system-ui, -apple-system, "Roboto Light", sans-serif;
-        display: grid;
-        place-content: center;
         height: 100vh;
+        overflow: hidden;
     }
 
     #chat {
@@ -180,10 +179,16 @@
     }
 
     .container {
-        display: grid;
-        grid-template-columns: 300px 1fr;
+        /*display: grid;
+        grid-template-columns: 300px 1fr;*/
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
         align-items: center;
+        flex-wrap: wrap;
         gap: 1rem;
+        overflow: hidden;
+        height: 100vh;
     }
 
     #username {
