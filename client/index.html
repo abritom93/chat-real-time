@@ -6,28 +6,33 @@
     <script type="module">
         import {io} from "https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.esm.min.js"
 
-        const getUsername = async () => {
-            const username = localStorage.getItem("username");
-            if (username) {
-                console.log("User existed", username)
-                return username;
-            }
+        const inputMessage = document.getElementById("inputMessage");
+        const inputUsername = document.getElementById("username");
+        const btnSend = document.querySelector(".btn_send");
 
-            const res = await fetch("https://random-data-api.com/api/users/random_user");
-            const {username: randomUsername} = await res.json();
-            localStorage.setItem("username", randomUsername)
-            return randomUsername;
+        const getUsername = () => {
+            return sessionStorage.getItem("username");
+        }
+
+        if (getUsername()) {
+            inputUsername.value = getUsername();
+            inputMessage.removeAttribute("disabled");
+            btnSend.removeAttribute("btnSend");
+        } else {
+            inputMessage.setAttribute("disabled", "disabled");
+            btnSend.setAttribute("disabled", "disabled")
         }
 
         const socket = io({
             auth: {
-                username: await getUsername(),
                 serverOffset: 0
             }
         });
 
         const form = document.getElementById("form");
-        const input = document.getElementById("input");
+
+        const btnClear = document.querySelector(".btn_clear");
+
         const messages = document.getElementById("messages");
 
         socket.on("chat message", (msg, serverOffset, username) => {
@@ -40,13 +45,39 @@
             messages.scrollTop = messages.scrollHeight
         })
 
-        form.addEventListener("submit", (e) => {
-            e.preventDefault();
-            if (input.value) {
-                socket.emit("chat message", input.value)
-                input.value = "";
+        socket.on("clear message", (status) => {
+            if (status === "OK") {
+                messages.innerHTML = "";
+                socket.auth.serverOffset = 0;
+                messages.scrollTop = messages.scrollHeight
             }
         })
+
+        form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            if (inputMessage.value?.trim() !== "") {
+                socket.emit("chat message", inputMessage.value, getUsername())
+                inputMessage.value = "";
+            }
+        })
+
+        btnClear.addEventListener("click", () => {
+            socket.emit("clear message")
+        })
+
+        inputUsername.addEventListener("keyup", (e) => {
+            const value = e.target.value;
+            if (value?.trim() !== "") {
+                sessionStorage.setItem("username", e.target.value);
+                inputMessage.removeAttribute("disabled");
+                btnSend.removeAttribute("disabled");
+                return;
+            }
+            sessionStorage.removeItem("username");
+            inputMessage.setAttribute("disabled", "disabled");
+            btnSend.setAttribute("disabled", "disabled");
+        });
+
     </script>
 </head>
 <style>
@@ -66,8 +97,6 @@
         display: grid;
         place-content: center;
         height: 100vh;
-        padding: 36px 36px 100px 36px;
-        grid-template-rows: 1fr;
     }
 
     #chat {
@@ -76,6 +105,7 @@
         overflow: hidden;
         width: 360px;
         position: relative;
+        height: 75vh;
     }
 
     #form {
@@ -88,7 +118,7 @@
         right: 0;
     }
 
-    #input {
+    #inputMessage {
         border-radius: 99999px;
         border: 1px solid #eee;
         flex: 1;
@@ -96,16 +126,23 @@
         padding: 0 8px;
     }
 
-    #input:focus {
+    #inputMessage:focus {
         outline: 0;
     }
 
     #form > button {
-        background: #09f;
         color: #fff;
         border: 0;
         margin: 4px;
         border-radius: 4px;
+    }
+
+    .btn_send {
+        background: #09f;
+    }
+
+    .btn_clear {
+        background: #999494;
     }
 
     #form > button:hover {
@@ -124,22 +161,67 @@
 
     #messages > li {
         padding: .5rem 1rem;
+        border-radius: .5rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid #5d6265;
+        background: #0e0c0c;
     }
 
-    #messages > li:nth-last-child(odd) {
+    #messages > li:last-child {
         background: #000;
     }
+
+    .btn_clear {
+        color: #cccccc;
+    }
+
+    .btn_send:disabled {
+        background: #999494;
+    }
+
+    .container {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    #username {
+        border-radius: 2rem;
+        padding: .5rem;
+    }
+
+    small {
+        float: right;
+        border: 1px solid #6c6262;
+        background: #999494;
+        border-radius: 0.5rem;
+        padding: 0.2rem;
+        color: black;
+        font-weight: bolder;
+    }
+
+
 </style>
 <body>
 
-<section id="chat">
-    <ul id="messages">
+<main class="container">
+    <aside>
+        <h1>Welcome to Ariel-Chat</h1>
+        <label for="username">Username:</label>
+        <input id="username" placeholder="Type your username..." autofocus autocomplete="off"/>
+    </aside>
+    <section id="chat">
+        <ul id="messages">
 
-    </ul>
-    <form id="form">
-        <input type="text" name="message" id="input" placeholder="Type a message" autocomplete="false"/>
-        <button type="submit">Enviar</button>
-    </form>
-</section>
+        </ul>
+        <form id="form">
+            <input disabled type="text" name="message" id="inputMessage" placeholder="Type a message"
+                   autocomplete="off"/>
+            <button class="btn_send" type="submit">Send</button>
+            <button class="btn_clear">Clear</button>
+        </form>
+    </section>
+</main>
 </body>
 </html>

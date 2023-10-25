@@ -2,10 +2,10 @@ import express from "express";
 import morgan from "morgan";
 import {Server} from "socket.io"
 import {createServer} from 'node:http'
-//import dotenv from "dotenv";
+import dotenv from "dotenv";
 import {createClient} from "@libsql/client";
 
-//dotenv.config();
+dotenv.config();
 
 const port = process.env.PORT ?? 3000
 
@@ -37,22 +37,35 @@ io.on("connection", async (socket) => {
         console.log("a user has disconnected")
     })
 
-    socket.on("chat message", async (msg) => {
+    socket.on("chat message", async (msg, username) => {
         let result;
-        const username = socket.handshake.auth.username ?? "anonymous";
+        const user = username ?? "anonymous";
         try {
             result = await db.execute({
                 sql: `INSERT INTO messages (content,username) VALUES (:content,:username)`,
                 args: {
                     content: msg,
-                    username
+                    username: user
                 }
             })
         } catch (e) {
             console.error(e)
             return
         }
-        io.emit("chat message", msg, result.lastInsertRowid.toString(), username)
+        io.emit("chat message", msg, result.lastInsertRowid.toString(), user)
+    })
+
+    socket.on("clear message", async () => {
+        try {
+            await db.execute({
+                sql: `delete from messages`,
+                args: {}
+            })
+            io.emit("clear message", "OK")
+        } catch (e) {
+            console.error(e)
+            io.emit("clear message", "KO")
+        }
     })
 
     if (!socket.recovered) {
